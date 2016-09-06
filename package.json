@@ -1,0 +1,24 @@
+{
+  "name": "oauth2-implicit",
+  "version": "1.0.0",
+  "description": "A library to handle the oauth2 implicit flow",
+  "scripts": {
+    "start": "tsc && concurrently \"npm run tsc:w\" \"npm run lite\" ",
+    "lite": "lite-server",
+    "tsc": "tsc",
+    "tsc:w": "tsc -w",
+    "postinstall": "typings install",
+    "typings": "typings"
+  },
+  "author": "Matteo Suppo <matteo.suppo@gmail.com>",
+  "license": "MIT",
+  "dependencies": {
+    "core-js": "^2.4.1"
+  },
+  "devDependencies": {
+    "concurrently": "^2.2.0",
+    "lite-server": "^2.2.2",
+    "typescript": "^1.8.10",
+    "typings":"^1.3.2"
+  }
+}

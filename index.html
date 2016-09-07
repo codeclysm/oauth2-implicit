@@ -10,7 +10,7 @@ var auth = new Oauth2({
 }) 
 
 auth.token.then(function (token) {
-	document.write("Token found: " + token)
+	document.write("Token found: " + JSON.stringify(token))
 }).catch(function (error) {
 	document.write(error)
 })

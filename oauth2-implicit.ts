@@ -1,9 +1,16 @@
-interface InitOptions {
+interface Params {
+  scope?: string;
+  type?: string;
+  expires?: string;
+  token?: string;
+};
+
+interface Options {
   authURI: string;
   clientID: string;
   redirectURI: string;
   scopes: Array<string>;
-  paramName?: string;
+  params?: Params;
 }
 
 interface Token {
@@ -15,11 +22,12 @@ interface Token {
 
 class Oauth2 {
   private token: Promise<Token>;
-  private opts: InitOptions;
-  constructor(opts: InitOptions) {
+  private opts: Options;
+
+  constructor(opts: Options) {
     this.opts = defaults(opts);
     // Attempt to get the token from the url
-    let token = getTokenFromHash(window.location, opts.paramName);
+    let token = getTokenFromHash(window.location, opts.params);
     if (token.token !== '') {
       this.token = new Promise((resolve, reject) => resolve(token));
       return;
@@ -40,13 +48,21 @@ class Oauth2 {
 
 }
 
-function refresh() {
-
-}
-
-function defaults(opts: InitOptions): InitOptions {
-  if (!opts.paramName) {
-    opts.paramName = 'access_token';
+function defaults(opts: Options): Options {
+  if (!opts.params) {
+    opts.params = {};
+  }
+  if (!opts.params.token) {
+    opts.params.token = 'access_token';
+  }
+  if (!opts.params.expires) {
+    opts.params.expires = 'expires_in';
+  }
+  if (!opts.params.type) {
+    opts.params.type = 'token_type';
+  }
+  if (!opts.params.scope) {
+    opts.params.scope = 'scope';
   }
   if (!opts.authURI) {
     console.error('Oauth2: the property authURI is missing');
@@ -57,6 +73,7 @@ function defaults(opts: InitOptions): InitOptions {
   return opts;
 }
 
+// redirect creates an iframe and redirects the iframe content to the oauth2 endpoint 
 function redirect(opts): Promise<Token> {
   return new Promise((resolve, reject) => {
       let iframe = document.createElement('iframe');
@@ -77,7 +94,7 @@ function redirect(opts): Promise<Token> {
 }
 
 // getRedirect builds a redirect uri to get an implicit flow token
-function getRedirect(opts: InitOptions): string {
+function getRedirect(opts: Options): string {
   let redirectUri = encodeURIComponent(opts.redirectURI);
   let state = Math.random().toString(36).substr(2, 8);
   let scope = opts.scopes.join(',');
@@ -87,7 +104,7 @@ function getRedirect(opts: InitOptions): string {
 
 // getTokenFromHash searches for the given param inside the location hash
 // the location hash is usually in the form #access_token=XYXYXY&expire=blabla
-function getTokenFromHash(location: Location, param: string): Token {
+function getTokenFromHash(location: Location, params: Params): Token {
   let token = {
     token: '',
     scope: '',
@@ -103,13 +120,14 @@ function getTokenFromHash(location: Location, param: string): Token {
   let hash = location.hash.substring(1);
   let vars = hash.split('&');
 
-  token.token = getValue(vars, param);
-  token.expires = parseInt(getValue(vars, 'expires_in'));
-  token.scope = getValue(vars, 'scope');
-  token.type = getValue(vars, 'token_type');
+  token.token = getValue(vars, params.token);
+  token.expires = parseInt(getValue(vars, params.expires));
+  token.scope = getValue(vars, params.scope);
+  token.type = getValue(vars, params.type);
   return token;
 }
 
+// getvalue extract a value from an array of "key=value" strings
 function getValue(vars: Array<string>, param: string): string {
   for (let i = 0; i < vars.length; i++) {
     let [name, value] = vars[i].split('=');

@@ -1,8 +1,9 @@
+;
 var Oauth2 = (function () {
     function Oauth2(opts) {
         this.opts = defaults(opts);
         // Attempt to get the token from the url
-        var token = getTokenFromHash(window.location, opts.paramName);
+        var token = getTokenFromHash(window.location, opts.params);
         if (token.token !== '') {
             this.token = new Promise(function (resolve, reject) { return resolve(token); });
             return;
@@ -21,11 +22,21 @@ var Oauth2 = (function () {
     };
     return Oauth2;
 }());
-function refresh() {
-}
 function defaults(opts) {
-    if (!opts.paramName) {
-        opts.paramName = 'access_token';
+    if (!opts.params) {
+        opts.params = {};
+    }
+    if (!opts.params.token) {
+        opts.params.token = 'access_token';
+    }
+    if (!opts.params.expires) {
+        opts.params.expires = 'expires_in';
+    }
+    if (!opts.params.type) {
+        opts.params.type = 'token_type';
+    }
+    if (!opts.params.scope) {
+        opts.params.scope = 'scope';
     }
     if (!opts.authURI) {
         console.error('Oauth2: the property authURI is missing');
@@ -35,6 +46,7 @@ function defaults(opts) {
     }
     return opts;
 }
+// redirect creates an iframe and redirects the iframe content to the oauth2 endpoint 
 function redirect(opts) {
     return new Promise(function (resolve, reject) {
         var iframe = document.createElement('iframe');
@@ -64,7 +76,7 @@ function getRedirect(opts) {
 }
 // getTokenFromHash searches for the given param inside the location hash
 // the location hash is usually in the form #access_token=XYXYXY&expire=blabla
-function getTokenFromHash(location, param) {
+function getTokenFromHash(location, params) {
     var token = {
         token: '',
         scope: '',
@@ -80,12 +92,13 @@ function getTokenFromHash(location, param) {
     }
     var hash = location.hash.substring(1);
     var vars = hash.split('&');
-    token.token = getValue(vars, param);
-    token.expires = parseInt(getValue(vars, 'expires_in'));
-    token.scope = getValue(vars, 'scope');
-    token.type = getValue(vars, 'token_type');
+    token.token = getValue(vars, params.token);
+    token.expires = parseInt(getValue(vars, params.expires));
+    token.scope = getValue(vars, params.scope);
+    token.type = getValue(vars, params.type);
     return token;
 }
+// getvalue extract a value from an array of "key=value" strings
 function getValue(vars, param) {
     for (var i = 0; i < vars.length; i++) {
         var _a = vars[i].split('='), name_1 = _a[0], value = _a[1];

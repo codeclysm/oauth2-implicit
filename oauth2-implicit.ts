@@ -36,7 +36,16 @@ class Oauth2 {
     this.refresh();
   };
 
-  refresh() {
+  // redirectURI builds a redirect uri to get an implicit flow token
+  redirectURI(): string {
+    let redirectUri = encodeURIComponent(this.opts.redirectURI);
+    let state = Math.random().toString(36).substr(2, 8);
+    let scope = this.opts.scopes.join(',');
+    let uri = this.opts.authURI + '?client_id=' + this.opts.clientID + '&state=' + state + '&scope=' + scope + '&response_type=token&redirect_uri=' + redirectUri;
+    return uri;
+  }
+
+  private refresh() {
     // Attempt to get the token from an iframe redirect
     this.token = this.redirect(this.opts);
 
@@ -75,7 +84,7 @@ class Oauth2 {
   private redirect(opts): Promise<Token> {
     return new Promise((resolve, reject) => {
       let iframe = document.createElement('iframe');
-      iframe.setAttribute('src', this.getRedirect(opts));
+      iframe.setAttribute('src', this.redirectURI());
       iframe.setAttribute('height', '0');
       iframe.setAttribute('width', '0');
       document.body.appendChild(iframe);
@@ -90,15 +99,6 @@ class Oauth2 {
         }
       };
     });
-  }
-
-  // getRedirect builds a redirect uri to get an implicit flow token
-  private getRedirect(opts: Options): string {
-    let redirectUri = encodeURIComponent(opts.redirectURI);
-    let state = Math.random().toString(36).substr(2, 8);
-    let scope = opts.scopes.join(',');
-    let uri = opts.authURI + '?client_id=' + opts.clientID + '&state=' + state + '&scope=' + scope + '&response_type=token&redirect_uri=' + redirectUri;
-    return uri;
   }
 
   // getTokenFromHash searches for the given param inside the location hash

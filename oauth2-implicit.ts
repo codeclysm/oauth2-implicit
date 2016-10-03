@@ -40,7 +40,7 @@ class Oauth2 {
   redirectURI(): string {
     let redirectUri = encodeURIComponent(this.opts.redirectURI);
     let state = Math.random().toString(36).substr(2, 8);
-    let scope = this.opts.scopes.join(',');
+    let scope = this.opts.scopes.join('%20');
     let uri = this.opts.authURI + '?client_id=' + this.opts.clientID + '&state=' + state + '&scope=' + scope + '&response_type=token&redirect_uri=' + redirectUri;
     return uri;
   }
@@ -52,7 +52,7 @@ class Oauth2 {
     // Refresh the token
     this.token.then(token => {
       window.setTimeout(this.refresh.bind(this), token.expires * 1000);
-    });
+    }).catch(error => console.debug(error));
   }
 
   private defaults(opts: Options): Options {

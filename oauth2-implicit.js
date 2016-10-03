@@ -15,7 +15,7 @@ var Oauth2 = (function () {
     Oauth2.prototype.redirectURI = function () {
         var redirectUri = encodeURIComponent(this.opts.redirectURI);
         var state = Math.random().toString(36).substr(2, 8);
-        var scope = this.opts.scopes.join(',');
+        var scope = this.opts.scopes.join('%20');
         var uri = this.opts.authURI + '?client_id=' + this.opts.clientID + '&state=' + state + '&scope=' + scope + '&response_type=token&redirect_uri=' + redirectUri;
         return uri;
     };
@@ -26,7 +26,7 @@ var Oauth2 = (function () {
         // Refresh the token
         this.token.then(function (token) {
             window.setTimeout(_this.refresh.bind(_this), token.expires * 1000);
-        });
+        }).catch(function (error) { return console.debug(error); });
     };
     Oauth2.prototype.defaults = function (opts) {
         if (!opts.params) {

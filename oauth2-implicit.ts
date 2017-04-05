@@ -33,7 +33,13 @@ class Oauth2 {
       return;
     }
 
-    this.refresh();
+    // Attempt to get an error from the url
+    let error = this.getErrorFromQuery(window.location);
+    if (!error) {
+      this.refresh();
+    } else {
+      this.token = new Promise((resolve, reject) => reject(error));
+    }
   };
 
   // redirectURI builds a redirect uri to get an implicit flow token
@@ -121,13 +127,14 @@ class Oauth2 {
       expires: 0,
       type: ''
     };
+
+    let hash: string;
     try {
-      let hash = location.hash.substring(1);
+      hash = location.hash.substring(1);
     } catch (e) {
       console.error('Oauth2: Get the hash from the location: ', e);
       return token;
     }
-    let hash = location.hash.substring(1);
     let vars = hash.split('&');
 
     token.token = getValue(vars, params.token);
@@ -136,4 +143,30 @@ class Oauth2 {
     token.type = getValue(vars, params.type);
     return token;
   }
+
+  // getErrorFromQuery searches for an error param inside the location query
+  private getErrorFromQuery(location: Location): string {
+    // getvalue extract a value from an array of "key=value" strings
+    function getValue(vars: Array<string>, param: string): string {
+      for (let i = 0; i < vars.length; i++) {
+        let [name, value] = vars[i].split('=');
+        if (name === param) {
+          return value;
+        }
+      }
+      return '';
+    }
+
+    let hash: string;
+    try {
+      hash = location.search.substring(1);
+    } catch (e) {
+      console.error('Oauth2: Get the query from the location: ', e);
+      return '';
+    }
+    let vars = hash.split('&');
+
+    return getValue(vars, 'error');
+  }
+
 }

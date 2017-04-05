@@ -8,7 +8,14 @@ var Oauth2 = (function () {
             this.token = new Promise(function (resolve, reject) { return resolve(token); });
             return;
         }
-        this.refresh();
+        // Attempt to get an error from the url
+        var error = this.getErrorFromQuery(window.location);
+        if (!error) {
+            this.refresh();
+        }
+        else {
+            this.token = new Promise(function (resolve, reject) { return reject(error); });
+        }
     }
     ;
     // redirectURI builds a redirect uri to get an implicit flow token
@@ -93,20 +100,43 @@ var Oauth2 = (function () {
             expires: 0,
             type: ''
         };
+        var hash;
         try {
-            var hash_1 = location.hash.substring(1);
+            hash = location.hash.substring(1);
         }
         catch (e) {
             console.error('Oauth2: Get the hash from the location: ', e);
             return token;
         }
-        var hash = location.hash.substring(1);
         var vars = hash.split('&');
         token.token = getValue(vars, params.token);
         token.expires = parseInt(getValue(vars, params.expires));
         token.scope = getValue(vars, params.scope);
         token.type = getValue(vars, params.type);
         return token;
+    };
+    // getErrorFromQuery searches for an error param inside the location query
+    Oauth2.prototype.getErrorFromQuery = function (location) {
+        // getvalue extract a value from an array of "key=value" strings
+        function getValue(vars, param) {
+            for (var i = 0; i < vars.length; i++) {
+                var _a = vars[i].split('='), name_2 = _a[0], value = _a[1];
+                if (name_2 === param) {
+                    return value;
+                }
+            }
+            return '';
+        }
+        var hash;
+        try {
+            hash = location.search.substring(1);
+        }
+        catch (e) {
+            console.error('Oauth2: Get the query from the location: ', e);
+            return '';
+        }
+        var vars = hash.split('&');
+        return getValue(vars, 'error');
     };
     return Oauth2;
 }());

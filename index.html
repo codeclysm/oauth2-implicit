@@ -3,17 +3,24 @@
 <script src="./oauth2-implicit.js"></script>
 <script>
 var auth = new Oauth2({
-	authURI: "https://sso-dev.arduino.cc/oauth2/auth",
-	redirectURI: "http://localhost:3000",
-	clientID: "test",
-	scopes: ["core"]
-}) 
+	authURI: "https://auth.arduino.cc/login",
+	redirectURI: "http://local.arduino.cc:3000",
+	clientID: "arduinoday",
+	scopes: ["profile:core"]
+})
 
-auth.token.then(function (token) {
+auth.token().then(function (token) {
 	document.write("Token found: " + JSON.stringify(token))
 }).catch(function (error) {
 	document.write(error)
 })
+
+window.setInterval(function () {
+	auth.token().then(function (token) {
+		console.debug(token)
+	});
+}, 5000)
+
 
 </script>
 </body>

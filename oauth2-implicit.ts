@@ -21,25 +21,13 @@ interface Token {
 }
 
 class Oauth2 {
-  private token: Promise<Token>;
   private opts: Options;
+  private _token: Token;
+  private _error: string;
+  private _promise: Promise<Token>;
 
   constructor(opts: Options) {
     this.opts = this.defaults(opts);
-    // Attempt to get the token from the url
-    let token = this.getTokenFromHash(window.location, opts.params);
-    if (token.token !== '') {
-      this.token = new Promise((resolve, reject) => resolve(token));
-      return;
-    }
-
-    // Attempt to get an error from the url
-    let error = this.getErrorFromQuery(window.location);
-    if (!error) {
-      this.refresh();
-    } else {
-      this.token = new Promise((resolve, reject) => reject(error));
-    }
   };
 
   // redirectURI builds a redirect uri to get an implicit flow token
@@ -51,13 +39,39 @@ class Oauth2 {
     return uri;
   }
 
+  private token(): Promise<Token> {
+    if (this._token && this._token.token !== '') {
+      return new Promise((resolve, reject) => resolve(this._token));
+    }
+
+    // Attempt to get the token from the url
+    let token = this.getTokenFromHash(window.location, this.opts.params);
+    if (token.token !== '') {
+      this._token = token;
+      return this.token();
+    }
+
+    // Attempt to get an error from the url
+    let error = this.getErrorFromQuery(window.location);
+    if (error) {
+      return new Promise((resolve, reject) => reject(error));
+    }
+
+    if (!this._promise) {
+      this.refresh();
+    }
+
+    return this._promise;
+  }
+
   private refresh() {
     // Attempt to get the token from an iframe redirect
-    this.token = this.redirect(this.opts);
+    this._promise = this.redirect(this.opts);
 
     // Refresh the token
-    this.token.then(token => {
-      window.setTimeout(this.refresh.bind(this), token.expires * 1000);
+    this._promise.then(token => {
+      this._token = token;
+      window.setTimeout(this.refresh.bind(this), (token.expires - 5) * 1000);
     }).catch(error => console.debug(error));
   }
 
@@ -86,7 +100,7 @@ class Oauth2 {
     return opts;
   }
 
-  // redirect creates an iframe and redirects the iframe content to the oauth2 endpoint 
+  // redirect creates an iframe and redirects the iframe content to the oauth2 endpoint
   private redirect(opts): Promise<Token> {
     return new Promise((resolve, reject) => {
       let iframe = document.createElement('iframe');

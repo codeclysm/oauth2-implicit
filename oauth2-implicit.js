@@ -2,20 +2,6 @@
 var Oauth2 = (function () {
     function Oauth2(opts) {
         this.opts = this.defaults(opts);
-        // Attempt to get the token from the url
-        var token = this.getTokenFromHash(window.location, opts.params);
-        if (token.token !== '') {
-            this.token = new Promise(function (resolve, reject) { return resolve(token); });
-            return;
-        }
-        // Attempt to get an error from the url
-        var error = this.getErrorFromQuery(window.location);
-        if (!error) {
-            this.refresh();
-        }
-        else {
-            this.token = new Promise(function (resolve, reject) { return reject(error); });
-        }
     }
     ;
     // redirectURI builds a redirect uri to get an implicit flow token
@@ -26,13 +12,35 @@ var Oauth2 = (function () {
         var uri = this.opts.authURI + '?client_id=' + this.opts.clientID + '&state=' + state + '&scope=' + scope + '&response_type=token&redirect_uri=' + redirectUri;
         return uri;
     };
+    Oauth2.prototype.token = function () {
+        var _this = this;
+        if (this._token && this._token.token !== '') {
+            return new Promise(function (resolve, reject) { return resolve(_this._token); });
+        }
+        // Attempt to get the token from the url
+        var token = this.getTokenFromHash(window.location, this.opts.params);
+        if (token.token !== '') {
+            this._token = token;
+            return this.token();
+        }
+        // Attempt to get an error from the url
+        var error = this.getErrorFromQuery(window.location);
+        if (error) {
+            return new Promise(function (resolve, reject) { return reject(error); });
+        }
+        if (!this._promise) {
+            this.refresh();
+        }
+        return this._promise;
+    };
     Oauth2.prototype.refresh = function () {
         var _this = this;
         // Attempt to get the token from an iframe redirect
-        this.token = this.redirect(this.opts);
+        this._promise = this.redirect(this.opts);
         // Refresh the token
-        this.token.then(function (token) {
-            window.setTimeout(_this.refresh.bind(_this), token.expires * 1000);
+        this._promise.then(function (token) {
+            _this._token = token;
+            window.setTimeout(_this.refresh.bind(_this), (token.expires - 5) * 1000);
         }).catch(function (error) { return console.debug(error); });
     };
     Oauth2.prototype.defaults = function (opts) {
@@ -59,7 +67,7 @@ var Oauth2 = (function () {
         }
         return opts;
     };
-    // redirect creates an iframe and redirects the iframe content to the oauth2 endpoint 
+    // redirect creates an iframe and redirects the iframe content to the oauth2 endpoint
     Oauth2.prototype.redirect = function (opts) {
         var _this = this;
         return new Promise(function (resolve, reject) {

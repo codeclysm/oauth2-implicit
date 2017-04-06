@@ -1,6 +1,7 @@
 ;
 var Oauth2 = (function () {
     function Oauth2(opts) {
+        this.cbs = []; // It's an array of callbacks
         this.opts = this.defaults(opts);
     }
     ;
@@ -40,8 +41,24 @@ var Oauth2 = (function () {
         // Refresh the token
         this._promise.then(function (token) {
             _this._token = token;
+            for (var i in _this.cbs) {
+                _this.cbs[i](token, '');
+            }
             window.setTimeout(_this.refresh.bind(_this), (token.expires - 5) * 1000);
-        }).catch(function (error) { return console.debug(error); });
+        }).catch(function (error) {
+            for (var i in _this.cbs) {
+                _this.cbs[i](null, error);
+            }
+        });
+    };
+    // subscribe adds your callback to the list of callbacks called whenever there's a change in authentication
+    Oauth2.prototype.subscribe = function (cb) {
+        this.cbs.push(cb);
+        this.token().then(function (token) {
+            cb(token, '');
+        }).catch(function (error) {
+            cb(null, error);
+        });
     };
     Oauth2.prototype.defaults = function (opts) {
         if (!opts.params) {
@@ -75,7 +92,6 @@ var Oauth2 = (function () {
             iframe.setAttribute('src', _this.redirectURI());
             iframe.setAttribute('height', '0');
             iframe.setAttribute('width', '0');
-            document.body.appendChild(iframe);
             var getTokenFromHash = _this.getTokenFromHash;
             iframe.onload = function () {
                 var token = getTokenFromHash(this.contentWindow.location, opts.params);
@@ -87,6 +103,10 @@ var Oauth2 = (function () {
                     resolve(token);
                 }
             };
+            iframe.onerror = function (error) {
+                reject(error);
+            };
+            document.body.appendChild(iframe);
         });
     };
     // getTokenFromHash searches for the given param inside the location hash

@@ -25,6 +25,7 @@ class Oauth2 {
   private _token: Token;
   private _error: string;
   private _promise: Promise<Token>;
+  private cbs: ((token: Token, error: string) => void)[] = []; // It's an array of callbacks
 
   constructor(opts: Options) {
     this.opts = this.defaults(opts);
@@ -71,8 +72,25 @@ class Oauth2 {
     // Refresh the token
     this._promise.then(token => {
       this._token = token;
+      for (let i in this.cbs) {
+        this.cbs[i](token, '');
+      }
       window.setTimeout(this.refresh.bind(this), (token.expires - 5) * 1000);
-    }).catch(error => console.debug(error));
+    }).catch(error => {
+      for (let i in this.cbs) {
+        this.cbs[i](null, error);
+      }
+     });
+  }
+
+  // subscribe adds your callback to the list of callbacks called whenever there's a change in authentication
+  private subscribe(cb: (token: Token, error: string) => void) {
+    this.cbs.push(cb);
+    this.token().then(token => {
+      cb(token, '');
+    }).catch(error => {
+      cb(null, error);
+    });
   }
 
   private defaults(opts: Options): Options {
@@ -107,9 +125,8 @@ class Oauth2 {
       iframe.setAttribute('src', this.redirectURI());
       iframe.setAttribute('height', '0');
       iframe.setAttribute('width', '0');
-      document.body.appendChild(iframe);
       let getTokenFromHash = this.getTokenFromHash;
-      iframe.onload = function () {
+      iframe.onload = function () { // this is not an arrow function because we are accessing the frame window with this
         let token = getTokenFromHash(this.contentWindow.location, opts.params);
         document.body.removeChild(iframe);
         if (token.token === '') {
@@ -118,6 +135,10 @@ class Oauth2 {
           resolve(token);
         }
       };
+      iframe.onerror = function (error) {
+        reject(error);
+      };
+      document.body.appendChild(iframe);
     });
   }
 

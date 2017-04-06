@@ -3,8 +3,21 @@ var Oauth2 = (function () {
     function Oauth2(opts) {
         this.cbs = []; // It's an array of callbacks
         this.opts = this.defaults(opts);
+        // Attempt to get the token from the url
+        var token = this.getTokenFromHash(window.location, this.opts.params);
+        if (token.token !== '') {
+            this.putInSession(token);
+            this.redirect();
+            return;
+        }
+        // Save the current url in session (useful for redirecting back if there's an authentication)
+        sessionStorage.setItem('oauth_redirect', window.location.href);
     }
     ;
+    // Login initiates a redirect toward the authentication system
+    Oauth2.prototype.login = function () {
+        window.location.href = this.redirectURI();
+    };
     // redirectURI builds a redirect uri to get an implicit flow token
     Oauth2.prototype.redirectURI = function () {
         var redirectUri = encodeURIComponent(this.opts.redirectURI);
@@ -20,30 +33,27 @@ var Oauth2 = (function () {
         if (token && token.expires && token.expires > now) {
             return new Promise(function (resolve, reject) { return resolve(token); });
         }
-        // Attempt to get the token from the url
-        token = this.getTokenFromHash(window.location, this.opts.params);
-        if (token.token !== '') {
-            this.putInSession(token);
-            return this.token();
-        }
-        // Attempt to get an error from the url
-        var error = this.getErrorFromQuery(window.location);
-        if (error) {
-            return new Promise(function (resolve, reject) { return reject(error); });
+        // If the token is expired refresh the promise
+        if (token && token.expires && token.expires < now) {
+            this._promise = null;
         }
         // if we're here it means that the token is stale or missing, we retrieve a new one
-        if (token && token.expires && token.expires < now) {
-            this.refresh();
-        }
         if (!this._promise) {
             this.refresh();
         }
         return this._promise;
     };
+    Oauth2.prototype.redirect = function () {
+        var redirectFrom = sessionStorage.getItem('oauth_redirect');
+        if (redirectFrom) {
+            sessionStorage.removeItem('oauth_redirect');
+            window.location.href = redirectFrom;
+        }
+    };
     Oauth2.prototype.refresh = function () {
         var _this = this;
         // Attempt to get the token from an iframe redirect
-        this._promise = this.redirect(this.opts);
+        this._promise = this.iframe(this.opts);
         // Refresh the token
         this._promise.then(function (token) {
             _this.putInSession(token);
@@ -89,8 +99,8 @@ var Oauth2 = (function () {
         }
         return opts;
     };
-    // redirect creates an iframe and redirects the iframe content to the oauth2 endpoint
-    Oauth2.prototype.redirect = function (opts) {
+    // iframe creates an iframe and redirects the iframe content to the oauth2 endpoint
+    Oauth2.prototype.iframe = function (opts) {
         var _this = this;
         return new Promise(function (resolve, reject) {
             var iframe = document.createElement('iframe');

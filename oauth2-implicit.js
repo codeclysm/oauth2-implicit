@@ -14,20 +14,26 @@ var Oauth2 = (function () {
         return uri;
     };
     Oauth2.prototype.token = function () {
-        var _this = this;
-        if (this._token && this._token.token !== '') {
-            return new Promise(function (resolve, reject) { return resolve(_this._token); });
+        var token;
+        token = this.getFromSession();
+        var now = new Date(Date.now() - 10 * 1000); // We consider stale token that expires in 10 seconds
+        if (token && token.expires && token.expires > now) {
+            return new Promise(function (resolve, reject) { return resolve(token); });
         }
         // Attempt to get the token from the url
-        var token = this.getTokenFromHash(window.location, this.opts.params);
+        token = this.getTokenFromHash(window.location, this.opts.params);
         if (token.token !== '') {
-            this._token = token;
+            this.putInSession(token);
             return this.token();
         }
         // Attempt to get an error from the url
         var error = this.getErrorFromQuery(window.location);
         if (error) {
             return new Promise(function (resolve, reject) { return reject(error); });
+        }
+        // if we're here it means that the token is stale or missing, we retrieve a new one
+        if (token && token.expires && token.expires < now) {
+            this.refresh();
         }
         if (!this._promise) {
             this.refresh();
@@ -40,11 +46,10 @@ var Oauth2 = (function () {
         this._promise = this.redirect(this.opts);
         // Refresh the token
         this._promise.then(function (token) {
-            _this._token = token;
+            _this.putInSession(token);
             for (var i in _this.cbs) {
                 _this.cbs[i](token, '');
             }
-            window.setTimeout(_this.refresh.bind(_this), (token.expires - 5) * 1000);
         }).catch(function (error) {
             for (var i in _this.cbs) {
                 _this.cbs[i](null, error);
@@ -125,7 +130,7 @@ var Oauth2 = (function () {
         var token = {
             token: '',
             scope: '',
-            expires: 0,
+            expires: new Date(0),
             type: ''
         };
         var hash;
@@ -138,7 +143,8 @@ var Oauth2 = (function () {
         }
         var vars = hash.split('&');
         token.token = getValue(vars, params.token);
-        token.expires = parseInt(getValue(vars, params.expires));
+        var expires_in = parseInt(getValue(vars, params.expires));
+        token.expires = new Date(Date.now() + expires_in * 1000);
         token.scope = getValue(vars, params.scope);
         token.type = getValue(vars, params.type);
         return token;
@@ -165,6 +171,23 @@ var Oauth2 = (function () {
         }
         var vars = hash.split('&');
         return getValue(vars, 'error');
+    };
+    Oauth2.prototype.putInSession = function (token) {
+        if (typeof token === 'object') {
+            var value = JSON.stringify(token);
+            sessionStorage.setItem('oauth_token', value);
+        }
+    };
+    Oauth2.prototype.getFromSession = function () {
+        var value = sessionStorage.getItem('oauth_token');
+        try {
+            var token = JSON.parse(value);
+            token.expires = new Date(token.expires);
+            return token;
+        }
+        catch (e) {
+            return null;
+        }
     };
     return Oauth2;
 }());

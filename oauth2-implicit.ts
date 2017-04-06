@@ -16,13 +16,12 @@ interface Options {
 interface Token {
   scope: string;
   type: string;
-  expires: number;
+  expires: Date;
   token: string;
 }
 
 class Oauth2 {
   private opts: Options;
-  private _token: Token;
   private _error: string;
   private _promise: Promise<Token>;
   private cbs: ((token: Token, error: string) => void)[] = []; // It's an array of callbacks
@@ -41,14 +40,24 @@ class Oauth2 {
   }
 
   private token(): Promise<Token> {
-    if (this._token && this._token.token !== '') {
-      return new Promise((resolve, reject) => resolve(this._token));
+    let token: Token;
+    token = this.getFromSession();
+
+    let now = new Date(Date.now() - 10 * 1000); // We consider stale token that expires in 10 seconds
+
+    if (token && token.expires && token.expires > now) {
+      return new Promise((resolve, reject) => resolve(token));
+    }
+
+    // If the token is expired refresh the promise
+    if (token && token.expires && token.expires < now) {
+      this._promise = null;
     }
 
     // Attempt to get the token from the url
-    let token = this.getTokenFromHash(window.location, this.opts.params);
+    token = this.getTokenFromHash(window.location, this.opts.params);
     if (token.token !== '') {
-      this._token = token;
+      this.putInSession(token);
       return this.token();
     }
 
@@ -58,6 +67,7 @@ class Oauth2 {
       return new Promise((resolve, reject) => reject(error));
     }
 
+    // if we're here it means that the token is stale or missing, we retrieve a new one
     if (!this._promise) {
       this.refresh();
     }
@@ -71,16 +81,15 @@ class Oauth2 {
 
     // Refresh the token
     this._promise.then(token => {
-      this._token = token;
+      this.putInSession(token);
       for (let i in this.cbs) {
         this.cbs[i](token, '');
       }
-      window.setTimeout(this.refresh.bind(this), (token.expires - 5) * 1000);
     }).catch(error => {
       for (let i in this.cbs) {
         this.cbs[i](null, error);
       }
-     });
+    });
   }
 
   // subscribe adds your callback to the list of callbacks called whenever there's a change in authentication
@@ -159,7 +168,7 @@ class Oauth2 {
     let token = {
       token: '',
       scope: '',
-      expires: 0,
+      expires: new Date(0),
       type: ''
     };
 
@@ -173,7 +182,8 @@ class Oauth2 {
     let vars = hash.split('&');
 
     token.token = getValue(vars, params.token);
-    token.expires = parseInt(getValue(vars, params.expires));
+    let expires_in = parseInt(getValue(vars, params.expires));
+    token.expires = new Date(Date.now() + expires_in * 1000);
     token.scope = getValue(vars, params.scope);
     token.type = getValue(vars, params.type);
     return token;
@@ -204,4 +214,21 @@ class Oauth2 {
     return getValue(vars, 'error');
   }
 
+  private putInSession(token: Token): void {
+    if (typeof token === 'object') {
+      let value = JSON.stringify(token);
+      sessionStorage.setItem('oauth_token', value);
+    }
+  }
+
+  private getFromSession(): Token {
+    let value = sessionStorage.getItem('oauth_token');
+    try {
+      let token = JSON.parse(value);
+      token.expires = new Date(token.expires);
+      return token;
+    } catch (e) {
+      return null;
+    }
+  }
 }

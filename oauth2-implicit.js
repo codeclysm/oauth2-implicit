@@ -3,6 +3,13 @@ var Oauth2 = (function () {
     function Oauth2(opts) {
         this.cbs = []; // It's an array of callbacks
         this.opts = this.defaults(opts);
+        // Check cookie for authentication
+        if (opts.cookieName && opts.cookieName !== '') {
+            var value = this.getCookie(opts.cookieName);
+            if (!value) {
+                sessionStorage.removeItem('oauth_token');
+            }
+        }
         // Attempt to get the token from the url
         var token = this.getTokenFromHash(window.location, this.opts.params);
         if (token.token !== '') {
@@ -198,6 +205,23 @@ var Oauth2 = (function () {
         catch (e) {
             return null;
         }
+    };
+    // getCookie return the value of a cookie
+    Oauth2.prototype.getCookie = function (name) {
+        var value = ' ' + document.cookie;
+        var start = value.indexOf(' ' + name + '=');
+        if (start === -1) {
+            value = null;
+        }
+        else {
+            start = value.indexOf('=', start) + 1;
+            var end = value.indexOf(';', start);
+            if (end === -1) {
+                end = value.length;
+            }
+            value = decodeURI(value.substring(start, end));
+        }
+        return value;
     };
     return Oauth2;
 }());

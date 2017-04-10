@@ -11,6 +11,7 @@ interface Options {
   redirectURI: string;
   scopes: Array<string>;
   params?: Params;
+  cookieName?: string;
 }
 
 interface Token {
@@ -28,6 +29,14 @@ class Oauth2 {
 
   constructor(opts: Options) {
     this.opts = this.defaults(opts);
+
+    // Check cookie for authentication
+    if (opts.cookieName && opts.cookieName !== '') {
+      let value = this.getCookie(opts.cookieName);
+      if (!value) {
+        sessionStorage.removeItem('oauth_token');
+      }
+    }
 
     // Attempt to get the token from the url
     let token = this.getTokenFromHash(window.location, this.opts.params);
@@ -243,4 +252,22 @@ class Oauth2 {
       return null;
     }
   }
+
+  // getCookie return the value of a cookie
+  private getCookie(name: string): string {
+    let value = ' ' + document.cookie;
+    let start = value.indexOf(' ' + name + '=');
+    if (start === -1) {
+      value = null;
+    } else {
+      start = value.indexOf('=', start) + 1;
+      let end = value.indexOf(';', start);
+      if (end === -1) {
+        end = value.length;
+      }
+      value = decodeURI(value.substring(start, end));
+    }
+    return value;
+  }
+
 }

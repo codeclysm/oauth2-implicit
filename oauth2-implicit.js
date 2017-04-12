@@ -6,7 +6,7 @@ var Oauth2 = (function () {
         // Check cookie for authentication
         if (opts.cookieName && opts.cookieName !== '') {
             var value = this.getCookie(opts.cookieName);
-            if (!value) {
+            if (!value || value === 'false') {
                 sessionStorage.removeItem('oauth_token');
             }
         }

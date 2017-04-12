@@ -33,7 +33,7 @@ class Oauth2 {
     // Check cookie for authentication
     if (opts.cookieName && opts.cookieName !== '') {
       let value = this.getCookie(opts.cookieName);
-      if (!value) {
+      if (!value || value === 'false') {
         sessionStorage.removeItem('oauth_token');
       }
     }

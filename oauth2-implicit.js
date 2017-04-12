@@ -25,12 +25,22 @@ var Oauth2 = (function () {
     Oauth2.prototype.login = function () {
         window.location.href = this.redirectURI();
     };
+    Oauth2.prototype.logout = function () {
+        sessionStorage.removeItem('oauth_token');
+        window.location.href = this.logoutURI();
+    };
     // redirectURI builds a redirect uri to get an implicit flow token
     Oauth2.prototype.redirectURI = function () {
         var redirectUri = encodeURIComponent(this.opts.redirectURI);
         var state = Math.random().toString(36).substr(2, 8);
         var scope = this.opts.scopes.join('%20');
         var uri = this.opts.authURI + '?client_id=' + this.opts.clientID + '&state=' + state + '&scope=' + scope + '&response_type=token&redirect_uri=' + redirectUri;
+        return uri;
+    };
+    // logoutURI builds a redirect uri to logout
+    Oauth2.prototype.logoutURI = function () {
+        var redirectUri = encodeURIComponent(this.opts.redirectURI);
+        var uri = this.opts.logoutURI + '?redirect_uri=' + redirectUri;
         return uri;
     };
     Oauth2.prototype.token = function () {

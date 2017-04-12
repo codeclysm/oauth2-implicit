@@ -7,6 +7,7 @@ interface Params {
 
 interface Options {
   authURI: string;
+  logoutURI: string;
   clientID: string;
   redirectURI: string;
   scopes: Array<string>;
@@ -56,12 +57,24 @@ class Oauth2 {
     window.location.href = this.redirectURI();
   }
 
+  logout(): void {
+    sessionStorage.removeItem('oauth_token');
+    window.location.href = this.logoutURI();
+  }
+
   // redirectURI builds a redirect uri to get an implicit flow token
   redirectURI(): string {
     let redirectUri = encodeURIComponent(this.opts.redirectURI);
     let state = Math.random().toString(36).substr(2, 8);
     let scope = this.opts.scopes.join('%20');
     let uri = this.opts.authURI + '?client_id=' + this.opts.clientID + '&state=' + state + '&scope=' + scope + '&response_type=token&redirect_uri=' + redirectUri;
+    return uri;
+  }
+
+  // logoutURI builds a redirect uri to logout
+  logoutURI(): string {
+    let redirectUri = encodeURIComponent(this.opts.redirectURI);
+    let uri = this.opts.logoutURI + '?redirect_uri=' + redirectUri;
     return uri;
   }
 

@@ -2,6 +2,10 @@
 var Oauth2 = (function () {
     function Oauth2(opts) {
         this.cbs = []; // It's an array of callbacks
+        // Die if inside iframe
+        if (window.self !== window.top) {
+            return;
+        }
         this.opts = this.defaults(opts);
         // Check cookie for authentication
         if (opts.cookieName && opts.cookieName !== '') {

@@ -29,6 +29,11 @@ class Oauth2 {
   private cbs: ((token: Token, error: string) => void)[] = []; // It's an array of callbacks
 
   constructor(opts: Options) {
+    // Die if inside iframe
+    if (window.self !== window.top) {
+      return;
+    }
+
     this.opts = this.defaults(opts);
 
     // Check cookie for authentication

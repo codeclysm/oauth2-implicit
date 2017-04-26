@@ -25,10 +25,16 @@ var Oauth2 = (function () {
     }
     ;
     // Login initiates a redirect toward the authentication system
-    Oauth2.prototype.login = function () {
+    Oauth2.prototype.login = function (redirect) {
+        if (redirect) {
+            sessionStorage.setItem('oauth_redirect', redirect);
+        }
         window.location.href = this.redirectURI();
     };
-    Oauth2.prototype.logout = function () {
+    Oauth2.prototype.logout = function (redirect) {
+        if (redirect) {
+            sessionStorage.setItem('oauth_redirect', redirect);
+        }
         sessionStorage.removeItem('oauth_token');
         window.location.href = this.logoutURI();
     };

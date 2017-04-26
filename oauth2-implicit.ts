@@ -57,11 +57,17 @@ class Oauth2 {
   };
 
   // Login initiates a redirect toward the authentication system
-  login(): void {
+  login(redirect?: string): void {
+    if (redirect) {
+      sessionStorage.setItem('oauth_redirect', redirect);
+    }
     window.location.href = this.redirectURI();
   }
 
-  logout(): void {
+  logout(redirect?: string): void {
+    if (redirect) {
+      sessionStorage.setItem('oauth_redirect', redirect);
+    }
     sessionStorage.removeItem('oauth_token');
     window.location.href = this.logoutURI();
   }

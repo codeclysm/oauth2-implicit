@@ -1,7 +1,6 @@
 ;
 var Oauth2 = (function () {
     function Oauth2(opts) {
-        this.cbs = []; // It's an array of callbacks
         // Die if inside iframe
         if (window.self !== window.top) {
             return;
@@ -78,22 +77,7 @@ var Oauth2 = (function () {
         // Refresh the token
         this._promise.then(function (token) {
             _this.putInSession(token);
-            for (var i in _this.cbs) {
-                _this.cbs[i](token, '');
-            }
         }).catch(function (error) {
-            for (var i in _this.cbs) {
-                _this.cbs[i](null, error);
-            }
-        });
-    };
-    // subscribe adds your callback to the list of callbacks called whenever there's a change in authentication
-    Oauth2.prototype.subscribe = function (cb) {
-        this.cbs.push(cb);
-        this.token().then(function (token) {
-            cb(token, '');
-        }).catch(function (error) {
-            cb(null, error);
         });
     };
     Oauth2.prototype.defaults = function (opts) {
@@ -111,9 +95,6 @@ var Oauth2 = (function () {
         }
         if (!opts.params.scope) {
             opts.params.scope = 'scope';
-        }
-        if (!opts.authURI) {
-            console.error('Oauth2: the property authURI is missing');
         }
         if (!opts.authURI) {
             console.error('Oauth2: the property authURI is missing');
@@ -169,7 +150,6 @@ var Oauth2 = (function () {
             hash = location.hash.substring(1);
         }
         catch (e) {
-            console.error('Oauth2: Get the hash from the location: ', e);
             return token;
         }
         var vars = hash.split('&');
@@ -179,29 +159,6 @@ var Oauth2 = (function () {
         token.scope = getValue(vars, params.scope);
         token.type = getValue(vars, params.type);
         return token;
-    };
-    // getErrorFromQuery searches for an error param inside the location query
-    Oauth2.prototype.getErrorFromQuery = function (location) {
-        // getvalue extract a value from an array of "key=value" strings
-        function getValue(vars, param) {
-            for (var i = 0; i < vars.length; i++) {
-                var _a = vars[i].split('='), name_2 = _a[0], value = _a[1];
-                if (name_2 === param) {
-                    return value;
-                }
-            }
-            return '';
-        }
-        var hash;
-        try {
-            hash = location.search.substring(1);
-        }
-        catch (e) {
-            console.error('Oauth2: Get the query from the location: ', e);
-            return '';
-        }
-        var vars = hash.split('&');
-        return getValue(vars, 'error');
     };
     Oauth2.prototype.putInSession = function (token) {
         if (typeof token === 'object') {

@@ -26,7 +26,6 @@ class Oauth2 {
   private opts: Options;
   private _error: string;
   private _promise: Promise<Token>;
-  private cbs: ((token: Token, error: string) => void)[] = []; // It's an array of callbacks
 
   constructor(opts: Options) {
     // Die if inside iframe
@@ -121,23 +120,7 @@ class Oauth2 {
     // Refresh the token
     this._promise.then(token => {
       this.putInSession(token);
-      for (let i in this.cbs) {
-        this.cbs[i](token, '');
-      }
     }).catch(error => {
-      for (let i in this.cbs) {
-        this.cbs[i](null, error);
-      }
-    });
-  }
-
-  // subscribe adds your callback to the list of callbacks called whenever there's a change in authentication
-  private subscribe(cb: (token: Token, error: string) => void) {
-    this.cbs.push(cb);
-    this.token().then(token => {
-      cb(token, '');
-    }).catch(error => {
-      cb(null, error);
     });
   }
 
@@ -156,9 +139,6 @@ class Oauth2 {
     }
     if (!opts.params.scope) {
       opts.params.scope = 'scope';
-    }
-    if (!opts.authURI) {
-      console.error('Oauth2: the property authURI is missing');
     }
     if (!opts.authURI) {
       console.error('Oauth2: the property authURI is missing');
@@ -215,7 +195,6 @@ class Oauth2 {
     try {
       hash = location.hash.substring(1);
     } catch (e) {
-      console.error('Oauth2: Get the hash from the location: ', e);
       return token;
     }
     let vars = hash.split('&');
@@ -226,31 +205,6 @@ class Oauth2 {
     token.scope = getValue(vars, params.scope);
     token.type = getValue(vars, params.type);
     return token;
-  }
-
-  // getErrorFromQuery searches for an error param inside the location query
-  private getErrorFromQuery(location: Location): string {
-    // getvalue extract a value from an array of "key=value" strings
-    function getValue(vars: Array<string>, param: string): string {
-      for (let i = 0; i < vars.length; i++) {
-        let [name, value] = vars[i].split('=');
-        if (name === param) {
-          return value;
-        }
-      }
-      return '';
-    }
-
-    let hash: string;
-    try {
-      hash = location.search.substring(1);
-    } catch (e) {
-      console.error('Oauth2: Get the query from the location: ', e);
-      return '';
-    }
-    let vars = hash.split('&');
-
-    return getValue(vars, 'error');
   }
 
   private putInSession(token: Token): void {
